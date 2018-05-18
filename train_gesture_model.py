@@ -19,18 +19,16 @@ def train_model(model, epoch_num, train_x, train_y, test_x, test_y):
 
 def main():
     parser = argparse.ArgumentParser(description='model')
-    parser.add_argument('--image_root', dest='image_root', default='inputs_128_128', help='saved image root')
+    parser.add_argument('--input_image_paths', dest='input_image_paths', default='inputs_128_128_1', nargs='+', help='input image paths, separate by space')
     parser.add_argument('--model_parameter_path', dest='model_parameter_path', default='model_parameter')
     parser.add_argument('--max_input_count', dest='max_input_count', type=int, default=10000, help='max input image count for train')
     parser.add_argument('--epoch_num', dest='epoch_num', type=int, default=20, help='epoch_num')
     parser.add_argument('--learning_rate', dest='learning_rate', type=float, default=0.0001, help='learning rate')
     
     args = parser.parse_args()
-    
-    train_x, train_y, test_x, test_y = load_image_data(args.image_root, args.max_input_count) 
+    train_x, train_y, test_x, test_y = load_image_data(args.input_image_paths, args.max_input_count)
     
     model = create_model(args.learning_rate)
-    
     latest_model_index = load_latest_model_parameter(model, args.model_parameter_path)
     while True:
         train_model(model, args.epoch_num, train_x, train_y, test_x, test_y)

@@ -23,33 +23,33 @@ def load_image(jpg_file):
     return cv2.imread(jpg_file)
     
 
-def load_image_data(image_root_path, max_image_num):    
-    train_images = []
-    train_labels = []
-    test_images = []
-    test_labels = []
+def load_image_data(input_image_paths, max_image_num):    
+    
+    all_images = []
+    all_labels = []
     
     jpg_file_and_label_index_pairs = []
-    for label_index, gesture_type in enumerate(GESTURE_TYPE):
-        folder = os.path.join(image_root_path, gesture_type)
-        jpg_file_and_label_index_pairs.extend([(os.path.join(folder, f), label_index) for f in os.listdir(folder) if f.endswith('.jpg')])
+    for image_path in input_image_paths:
+        for label_index, gesture_type in enumerate(GESTURE_TYPE):
+            folder = os.path.join(image_path, gesture_type)
+            jpg_file_and_label_index_pairs.extend([(os.path.join(folder, f), label_index) for f in os.listdir(folder) if f.endswith('.jpg')])
     
     np.random.shuffle(jpg_file_and_label_index_pairs)
     jpg_file_and_label_index_pairs = jpg_file_and_label_index_pairs[0:max_image_num]
-    train_num = int(len(jpg_file_and_label_index_pairs) * TRAIN_RATE)
     
-    for jpg_file_and_label_index_pair in jpg_file_and_label_index_pairs[0:train_num]:
-        train_images.append(load_image(jpg_file_and_label_index_pair[0]))
-        train_labels.append(LABEL_BASE[jpg_file_and_label_index_pair[1]])
+    for jpg_file_and_label_index_pair in jpg_file_and_label_index_pairs:
+        all_images.append(load_image(jpg_file_and_label_index_pair[0]))
+        all_labels.append(LABEL_BASE[jpg_file_and_label_index_pair[1]])
         
-    for jpg_file_and_label_index_pair in jpg_file_and_label_index_pairs[train_num:]:
-        test_images.append(load_image(jpg_file_and_label_index_pair[0]))
-        test_labels.append(LABEL_BASE[jpg_file_and_label_index_pair[1]])
-                
-    train_images = normalize_images(train_images)
-    train_labels = normalize_label(train_labels)
-    test_images = normalize_images(test_images)
-    test_labels = normalize_label(test_labels)
+    train_num = int(len(jpg_file_and_label_index_pairs) * TRAIN_RATE)    
+    train_images = normalize_images(all_images[0:train_num])
+    train_labels = normalize_label(all_labels[0:train_num])
+    test_images = normalize_images(all_images[train_num:])
+    test_labels = normalize_label(all_labels[train_num:])
+    
+    print('all data:', len(all_images))
+    print('train data:', len(train_images))
+    print('test data:', len(test_images))
     
     return train_images, train_labels, test_images, test_labels
     
@@ -77,13 +77,17 @@ def create_model(learning_rate):
     from tflearn.layers.estimator import regression
     
     network = tflearn.input_data(shape=[None, IMAGE_SIZE[0], IMAGE_SIZE[1], 3], name='input')
-    network = conv_2d(network, 32, 3, activation='relu', regularizer="L2")
+    network = conv_2d(network, 32, 5, activation='relu', regularizer="L2")
     network = max_pool_2d(network, 2)
     network = local_response_normalization(network)
     network = conv_2d(network, 64, 3, activation='relu', regularizer="L2")
     network = max_pool_2d(network, 2)
     network = local_response_normalization(network)
-    network = fully_connected(network, 128, activation='tanh')
+    network = conv_2d(network, 128, 3, activation='relu', regularizer="L2")
+    network = conv_2d(network, 128, 3, activation='relu', regularizer="L2")
+    network = conv_2d(network, 128, 3, activation='relu', regularizer="L2")
+    network = max_pool_2d(network, 2)
+    network = fully_connected(network, 256, activation='tanh')
     network = dropout(network, 0.8)
     network = fully_connected(network, 256, activation='tanh')
     network = dropout(network, 0.8)
